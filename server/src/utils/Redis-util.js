@@ -1,5 +1,5 @@
 const redisClient = require('../../config/redisClient');
-const Logs = require('./Logs');
+const Logs = require('./Logs-util');
 
 module.exports = {
 

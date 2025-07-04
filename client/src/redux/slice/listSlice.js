@@ -12,7 +12,6 @@ export const fetchLists = createAsyncThunk('list/',
       const response = await axiosInstance.get(endpoints.list.get, {
         params
       });
- console.log(response.data)
       return {
         stats: response.data.data.stats,
         data: response.data.data,

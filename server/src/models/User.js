@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
-const Cipher = require('../utils/Cipher');
-const Helper = require('../utils/Helper');
+const Cipher = require('../utils/Cipher-util');
+const Helper = require('../utils/Helper-util');
 
 const userSchema = new mongoose.Schema(
   {

@@ -7,9 +7,9 @@ const JwtStrategy = require('passport-jwt').Strategy;
 const ExtractJwt = require('passport-jwt').ExtractJwt;
 const bcrypt = require('bcryptjs');
 const User = require('../src/models/User');
-const Logs = require('../src/utils/Logs');
-const Helper = require('../src/utils/Helper');
-const Accounts = require('../src/utils/Accounts');
+const Logs = require('../src/utils/Logs-util');
+const Helper = require('../src/utils/Helper-util');
+const Accounts = require('../src/utils/Accounts-utils');
 
 // ✅ Verify JWT_SECRET exists
 if (!process.env.JWT_SECRET) {

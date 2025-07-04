@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const CreditService = require('../../services/credit-service.js');
-const Logs = require('../../utils/Logs.js');
-const Response = require('../../utils/Response.js');
+const Logs = require('../../utils/Logs-util.js');
+const Response = require('../../utils/Response-util.js');
 const { body, validationResult } = require('express-validator');
 const Credit = require('../../models/Credits.js');
 

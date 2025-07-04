@@ -1,4 +1,4 @@
-const Response = require('../../utils/Response');
+const Response = require('../../utils/Response-util');
 
 module.exports = {
 

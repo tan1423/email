@@ -1,5 +1,5 @@
-const Logs = require("../../utils/Logs.js");
-const Response = require("../../utils/Response.js");
+const Logs = require("../../utils/Logs-util.js");
+const Response = require("../../utils/Response-util.js");
 const {
   verifySingleEmail,
   uploadFile,

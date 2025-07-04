@@ -84,6 +84,7 @@ const TABLE_HEAD = [
     tooltip: 'Current state of the email verification credits.',
   },
 ];
+
 function transformData(data, selectedTimeZone) {
   return data.map((item) => {
     const dateCreatedOn = convertToTimezone(item.createdAt, selectedTimeZone);
@@ -148,7 +149,7 @@ export function CreditTable() {
     filters: filters.state,
   });
 
-  const dataInPage = rowInPage(dataFiltered, table.page, table.rowsPerPage);
+  const dataInPage = rowInPage(dataFiltered, page, rowsPerPage); // Use local pagination state
   const canReset =
     !!filters.state.name ||
     filters.state.status !== 'all' ||
@@ -163,9 +164,12 @@ export function CreditTable() {
     },
     [filters, table]
   );
+  
   const setTotalRowsPerPage = (num) => {
     setRowsPerPage(num);
     setPage(0);
+    // Also update the table's rowsPerPage if needed
+    table.onRowsPerPageChange({ target: { value: num } });
   };
 
   useEffect(() => {
@@ -182,6 +186,7 @@ export function CreditTable() {
   const handleSearch = (value) => {
     // Clear any existing timeout
   };
+  
   const handleFilterApplied = (filter) => {
     switch (filter) {
       case 'Added':
@@ -267,7 +272,7 @@ export function CreditTable() {
                   ))}
                   <TableEmptyRows
                     height={table.dense ? 56 : 76}
-                    emptyRows={emptyRows(table.page, table.rowsPerPage, dataFiltered.length)}
+                    emptyRows={emptyRows(page, rowsPerPage, dataFiltered.length)} // Use local pagination state
                   />
                 </>
               ) : (

@@ -1,7 +1,7 @@
 const User = require('../../models/User');
-const Logs = require('../../utils/Logs');
-const Response = require('../../utils/Response');
-const Helper = require('../../utils/Helper');
+const Logs = require('../../utils/Logs-util');
+const Response = require('../../utils/Response-util');
+const Helper = require('../../utils/Helper-util');
 const { validationResult, param, body } = require('express-validator');
 
 

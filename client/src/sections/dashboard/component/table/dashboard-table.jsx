@@ -1,5 +1,5 @@
-import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '@emotion/react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useState, useEffect, useCallback } from 'react';
 
 import Tab from '@mui/material/Tab';
@@ -24,9 +24,17 @@ import { useBoolean } from 'src/hooks/use-boolean';
 import { useSetState } from 'src/hooks/use-set-state';
 
 import { fIsBetween } from 'src/utils/format-time-util';
+import { convertToTimezone } from 'src/utils/date-utils';
 
 import { varAlpha } from 'src/theme/styles';
 import { DASHBOARD_STATUS_OPTIONS } from 'src/_mock/_table/_dashboard';
+import {
+  deleteList,
+  fetchLists,
+  pollJobStatus,
+  fetchChartValues,
+  startBulkVerification,
+} from 'src/redux/slice/listSlice';
 
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
@@ -43,14 +51,6 @@ import {
   TablePaginationCustom,
 } from 'src/components/table';
 
-import { convertToTimezone } from 'src/utils/date-utils';
-import {
-  deleteList,
-  fetchLists,
-  pollJobStatus,
-  fetchChartValues,
-  startBulkVerification,
-} from 'src/redux/slice/listSlice';
 import { DashboardTableRow } from './dashboard-table-row';
 import { DashboardTableToolbar } from './dashboard-table-toolbar';
 import { DashboardTableFiltersResult } from './dashboard-table-filters-result';
@@ -70,6 +70,7 @@ const TABLE_HEAD = [
     whiteSpace: 'nowrap',
     tooltip: 'View list status, name and date of creation here.',
   },
+
   {
     id: 'action',
     label: 'Action',
@@ -77,6 +78,7 @@ const TABLE_HEAD = [
     whiteSpace: 'nowrap',
     tooltip: 'Take actions on the list here.',
   },
+
   {
     id: 'report',
     label: 'Report',
@@ -107,29 +109,33 @@ export function DashboardTable() {
   const [selected, setSelected] = useState('all');
   const [page, setPage] = useState(0);
   const [emailCount, setEmailCount] = useState({
-    completed: 0,
-    failed: 0,
-    processing: 0,
-    unprocessed: 0,
-    all: 0
+    COMPLETED: 0,
+    FAILED: 0,
+    PROCESSING: 0,
+    UNPROCESSED: 0,
   });
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [searchValue, setSearchValue] = useState('');
   const selectedTimeZone = useSelector((state) => state.timeZone.selectedTimeZone);
 
   const dispatch = useDispatch();
-  const [tableData, setTableData] = useState([]);
+  const [tableData, setTableData] = useState(
+    listData?.listData?.map((item, index) => ({
+      ...item,
+      id: index,
+    }))
+  );
 
   useEffect(() => {
     if (listData?.listData) {
-      const counts = listData.totalEmailCounts || {}; 
+      const counts = listData.totalEmailCounts || {};
       const totalCount = Object.values(counts).reduce((acc, count) => acc + count, 0);
       setEmailCount({
-        completed: counts.COMPLETED || 0,
-        failed: counts.FAILED || 0,
-        processing: counts.PROCESSING || 0,
-        unprocessed: counts.UNPROCESSED || 0,
-        all: totalCount || 0
+        COMPLETED: counts.COMPLETED || 0,
+        FAILED: counts.FAILED || 0,
+        PROCESSING: counts.PROCESSING || 0,
+        UNPROCESSED: counts.UNPROCESSED || 0,
+        All: totalCount || 0,
       });
       setTableData(transformData(listData?.listData, selectedTimeZone));
     }
@@ -154,7 +160,9 @@ export function DashboardTable() {
     comparator: getComparator(table.order, table.orderBy),
     filters: filters.state,
   });
-  const dataInPage = rowInPage(dataFiltered, table.page, table.rowsPerPage);
+
+  // Use local pagination state instead of table state
+  const dataInPage = rowInPage(dataFiltered, page, rowsPerPage);
 
   const canReset =
     !!filters.state.name ||
@@ -166,6 +174,7 @@ export function DashboardTable() {
   const handleFilterStatus = useCallback(
     (event, newValue) => {
       table.onResetPage();
+      setPage(0); // Reset local page state as well
       filters.setState({ status: newValue });
     },
     [filters, table]
@@ -233,7 +242,7 @@ export function DashboardTable() {
       setSnackbarState({
         open: true,
         message: 'Email list not deleted successfully.',
-        severity: 'error',
+        severity: 'danger',
       });
     }
   };
@@ -241,6 +250,22 @@ export function DashboardTable() {
   const handleOnClose = () => {
     confirmDelete.onFalse();
     handleClosePopover();
+  };
+
+  // Handle rows per page change
+  const handleRowsPerPageChange = (event) => {
+    const newRowsPerPage = parseInt(event.target.value, 10);
+    setRowsPerPage(newRowsPerPage);
+    setPage(0);
+    // Also update the table's internal state
+    table.onRowsPerPageChange(event);
+  };
+
+  // Handle page change
+  const handlePageChange = (event, newPage) => {
+    setPage(newPage);
+    // Also update the table's internal state
+    table.onPageChange(event, newPage);
   };
 
   useEffect(() => {
@@ -308,8 +333,7 @@ export function DashboardTable() {
             icon={
               <Label
                 variant={
-                  ((tab.value === 'all' || tab.value === filters.state.status) && 'filled') ||
-                  'soft'
+                  tab.value === 'all' || tab.value === filters.state.status ? 'filled' : 'soft'
                 }
                 color={
                   (tab.value === 'completed' && 'success') ||
@@ -318,25 +342,42 @@ export function DashboardTable() {
                   'default'
                 }
               >
-                {emailCount[tab.value] || 0}
+                {tab.value === 'completed'
+                  ? Number(emailCount.COMPLETED)
+                  : tab.value === 'processing'
+                    ? Number(emailCount.PROCESSING)
+                    : tab.value === 'unprocessed'
+                      ? Number(emailCount.UNPROCESSED)
+                      : tab.value === 'all'
+                        ? Number(emailCount.All)
+                        : 0}
               </Label>
             }
           />
         ))}
       </Tabs>
+
       <DashboardTableToolbar
         filters={filters}
-        onResetPage={table.onResetPage}
+        onResetPage={() => {
+          table.onResetPage();
+          setPage(0);
+        }}
         setSearchValue={setSearchValue}
       />
+
       {canReset && (
         <DashboardTableFiltersResult
           filters={filters}
           totalResults={listData?.totalEmailLists}
-          onResetPage={table.onResetPage}
+          onResetPage={() => {
+            table.onResetPage();
+            setPage(0);
+          }}
           sx={{ p: 2.5, pt: 0 }}
         />
       )}
+
       <Box sx={{ position: 'relative' }}>
         <Table size={table.dense ? 'small' : 'medium'}>
           <TableHeadCustom
@@ -357,10 +398,7 @@ export function DashboardTable() {
 
           <TableBody>
             {dataFiltered
-              ?.slice(
-                table.page * table.rowsPerPage,
-                table.page * table.rowsPerPage + table.rowsPerPage
-              )
+              ?.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((row, index) => (
                 <DashboardTableRow
                   key={row.id}
@@ -368,7 +406,7 @@ export function DashboardTable() {
                   selected={table.selected.includes(row.id)}
                   onSelectRow={() => table.onSelectRow(row.id)}
                   onOpenPopover={(event) => handleOpenPopover(event, row)}
-                  dashboardTableIndex={table.page * table.rowsPerPage + index}
+                  dashboardTableIndex={page * rowsPerPage + index}
                   onStartVerification={() => handleStartVerification(row)}
                   isProcessing={processingRowId === row.id && isStartVerification}
                   isCompleted={processingRowId === row.id && isVerificationCompleted}
@@ -376,26 +414,29 @@ export function DashboardTable() {
               ))}
 
             <TableEmptyRows
-              height={table.dense ? 56 : 56 + 20}
-              emptyRows={emptyRows(table.page, table.rowsPerPage, dataFiltered?.length)}
+              height={table.dense ? 56 : 76}
+              emptyRows={emptyRows(page, rowsPerPage, dataFiltered?.length)}
             />
 
-            {tableData?.length === 0 ? (
-              <TableNoData
-                title="No Data Found"
-                description="No data found in the table"
-                notFound={notFound}
-              />
-            ) : (
+            {notFound && (
               <TableNoData
                 title="No Search Found"
                 description={`No search found with keyword "${filters.state.name}"`}
                 notFound={notFound}
               />
             )}
+
+            {!notFound && tableData?.length === 0 && (
+              <TableNoData
+                title="No Data Found"
+                description="No data found in the table"
+                notFound={true}
+              />
+            )}
           </TableBody>
         </Table>
       </Box>
+
       <CustomPopover
         open={Boolean(anchorEl)}
         anchorEl={anchorEl}
@@ -411,6 +452,7 @@ export function DashboardTable() {
           </Tooltip>
         </MenuList>
       </CustomPopover>
+
       <ConfirmDialog
         open={confirmDelete.value}
         onClose={handleOnClose}
@@ -422,6 +464,7 @@ export function DashboardTable() {
           </Button>
         }
       />
+
       <Snackbar
         open={snackbarState.open}
         autoHideDuration={2500}
@@ -453,49 +496,50 @@ export function DashboardTable() {
           {snackbarState.message}
         </Alert>
       </Snackbar>
+
       <TablePaginationCustom
         page={page}
         count={listData?.totalEmailLists}
         dense={table.dense}
-        rowsPerPage={table.rowsPerPage}
-        onPageChange={(e, newPage) => setPage(newPage)}
+        rowsPerPage={rowsPerPage}
+        onPageChange={handlePageChange}
         onChangeDense={table.onChangeDense}
-        onRowsPerPageChange={table.onRowsPerPageChange}
+        onRowsPerPageChange={handleRowsPerPageChange}
       />
     </Card>
   );
-}
 
-function applyFilter({ inputData, comparator, filters, dateError }) {
-  const { status, name, startDate, endDate } = filters;
+  function applyFilter({ inputData, comparator, filters, dateError }) {
+    const { status, name, startDate, endDate } = filters;
 
-  const stabilizedThis = inputData?.map((el, index) => [el, index]);
+    const stabilizedThis = inputData?.map((el, index) => [el, index]);
 
-  stabilizedThis?.sort((a, b) => {
-    const order = comparator(a[0], b[0]);
-    if (order !== 0) return order;
-    return a[1] - b[1];
-  });
+    stabilizedThis?.sort((a, b) => {
+      const order = comparator(a[0], b[0]);
+      if (order !== 0) return order;
+      return a[1] - b[1];
+    });
 
-  inputData = stabilizedThis?.map((el) => el[0]);
+    inputData = stabilizedThis?.map((el) => el[0]);
 
-  if (name) {
-    inputData = inputData?.filter(
-      (order) =>
-        order.uploadedList?.name?.toLowerCase()?.indexOf(name?.toLowerCase()) !== -1 ||
-        order.uploadedList?.email?.toLowerCase()?.indexOf(name?.toLowerCase()) !== -1
-    );
-  }
-
-  if (status !== 'all') {
-    inputData = inputData?.filter((order) => order.status === status);
-  }
-
-  if (!dateError) {
-    if (startDate && endDate) {
-      inputData = inputData?.filter((order) => fIsBetween(order.createdAt, startDate, endDate));
+    if (name) {
+      inputData = inputData?.filter(
+        (order) =>
+          order.uploadedList?.name?.toLowerCase()?.indexOf(name?.toLowerCase()) !== -1 ||
+          order.uploadedList?.email?.toLowerCase()?.indexOf(name?.toLowerCase()) !== -1
+      );
     }
-  }
 
-  return inputData;
+    if (status !== 'all') {
+      inputData = inputData?.filter((order) => order.status === status);
+    }
+
+    if (!dateError) {
+      if (startDate && endDate) {
+        inputData = inputData?.filter((order) => fIsBetween(order.createdAt, startDate, endDate));
+      }
+    }
+
+    return inputData;
+  }
 }

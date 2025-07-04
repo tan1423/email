@@ -2,10 +2,10 @@
  * JWT Authentication Middleware
  */
 
-const Response = require('../utils/Response');
+const Response = require('../utils/Response-util');
 const ActivityLog = require('../models/ActivityLog');
 const passport = require('passport');
-const Logs = require('../utils/Logs');
+const Logs = require('../utils/Logs-util');
 
 module.exports = async (req, res, next) => {
   passport.authenticate("jwt", { session: false }, async (err, user, info) => {

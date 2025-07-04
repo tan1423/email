@@ -1,8 +1,8 @@
-const Response = require('../../utils/Response')
+const Response = require('../../utils/Response-util')
 const ct = require('countries-and-timezones');
 const User = require('../../models/User');
-const { getGmtOffset } = require('../../utils/timeZone');
-const Logs = require('../../utils/Logs');
+const { getGmtOffset } = require('../../utils/timeZone-util');
+const Logs = require('../../utils/Logs-util');
 
 module.exports = {
     /**

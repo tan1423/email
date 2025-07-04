@@ -1,7 +1,7 @@
 const multer = require('multer');
 const path = require('path');
-const Logs = require('../utils/Logs'); // Make sure the path is correct
-const Response = require('../utils/Response'); // Make sure the path is correct
+const Logs = require('../utils/Logs-util'); // Make sure the path is correct
+const Response = require('../utils/Response-util'); // Make sure the path is correct
 
 // Middleware to handle Multer errors
 const handleMulterError = (err, req, res, next) => {
